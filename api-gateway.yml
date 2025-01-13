@@ -1,0 +1,98 @@
+Parameters:
+  ApiGatewayName:
+    Type: String
+    Default: todo-app-api
+    Description: The name of the API Gateway
+
+
+Resources:
+  ApiGateway:
+    Type: AWS::ApiGateway::RestApi
+    Properties:
+      Name: !Ref ApiGatewayName
+      Description: API Gateway for the Todo App
+      
+  MainResource:
+    Type: AWS::ApiGateway::Resource
+    Properties:
+      RestApiId: !Ref ApiGateway
+      ParentId: !GetAtt ApiGateway.RootResourceId
+      PathPart: 'todos'
+
+  GetAllTodosMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      HttpMethod: GET
+      ResourceId: !Ref MainResource
+      RestApiId: !Ref ApiGateway
+      AuthorizationType: NONE
+      Integration:
+        Type: MOCK
+        IntegrationResponses:
+          - StatusCode: 200
+            ResponseTemplates:
+              application/json: |
+                [
+                  {
+                    "id": "1",
+                    "title": "Buy groceries",
+                    "createdAt": "2023-10-01T12:00:00Z",
+                    "completedAt": "2025-01-11T14:00:00Z"
+                  },
+                  {
+                    "id": "2",
+                    "title": "Finish project",
+                    "createdAt": "2023-10-02T12:00:00Z",
+                    "completedAt": null
+                  }
+                ]
+        PassthroughBehavior: WHEN_NO_MATCH
+        RequestTemplates:
+          application/json: |
+            {
+              "id": "$input.params('id')",
+              "statusCode": 200
+            }
+      MethodResponses:
+           - StatusCode: 200
+             ResponseModels:
+               application/json: Empty
+             ResponseParameters:
+               method.response.header.Access-Control-Allow-Origin: true
+               method.response.header.Access-Control-Allow-Methods: true
+               method.response.header.Access-Control-Allow-Headers: true
+               method.response.header.Access-Control-Allow-Credentials: true
+               method.response.header.Access-Control-Expose-Headers: true
+               method.response.header.Access-Control-Max-Age: true
+      # RequestParameters:
+      #   method.request.querystring.id: true
+      RequestValidatorId: !Ref RequestValidator
+      # RequestModels:
+      #   application/json: !Ref TodoRequestModel
+      
+  RequestValidator:
+    Type: AWS::ApiGateway::RequestValidator
+    Properties:
+      RestApiId: !Ref ApiGateway
+      ValidateRequestBody: true
+      ValidateRequestParameters: true
+      Name: 'RequestValidator'
+
+  TodoRequestModel:
+    Type: AWS::ApiGateway::Model
+    Properties:
+      RestApiId: !Ref ApiGateway
+      ContentType: application/json
+      Name: 'TodoRequestModel'
+      Schema: |
+        {
+          "$schema": "http://json-schema.org/draft-04/schema#",
+          "title": "TodoRequest",
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string"
+            }
+          },
+          "required": ["id"]
+        }
