@@ -15,6 +15,10 @@ Parameters:
     Type: String
     Description: The GitHub repository name
     Default: todo-app-serverless
+  IsServerless:
+    Type: String
+    Description: Whether the application is serverless or not
+    Default: "true"
 
 Resources:
 
@@ -116,9 +120,9 @@ Resources:
               OutputArtifacts:
                 - Name: SourceArtifact
               Namespace: SourceVariables
-        - Name: BuildAndDeploy
+        - Name: Build
           Actions:
-            - Name: BuildAndDeployAction
+            - Name: BuildAction
               RunOrder: 1
               ActionTypeId:
                 Category: Build
@@ -132,6 +136,31 @@ Resources:
               OutputArtifacts:
                 - Name: BuildArtifact
               Namespace: BuildVariables
+        - Name: Deploy
+          Actions:
+            - Name: DeployAction
+              RunOrder: 1
+              ActionTypeId:
+                Category: Deploy
+                Owner: AWS
+                Version: 1
+                Provider: CloudFormation
+              Configuration:
+                ActionMode: CREATE_UPDATE
+                StackName: !Sub '${ProjectName}-stack'
+                Capabilities: CAPABILITY_NAMED_IAM
+                RoleArn: !GetAtt CodePipelineRole.Arn
+                TemplatePath: SourceArtifact::infra.yml
+                ParameterOverrides: !Sub |
+                  {
+                    "ContainerImageRepositoryUri": "${ContainerImageRepository.RepositoryUri}",
+                    "ProjectName": "${ProjectName}",
+                    "ImageTag": "#{BuildVariables.IMAGE_TAG}",
+                    "IsServerless": "${IsServerless}"
+                  }
+              InputArtifacts:
+                - Name: SourceArtifact
+              Namespace: DeployVariables
 
   ############### IAM Roles ################
 
@@ -166,7 +195,6 @@ Resources:
                 Action:
                   - iam:PassRole
                 Resource: '*'
-              # Allow CodePipeline to get the GitHub connection
               - Effect: Allow
                 Action:
                   - codestar-connections:*

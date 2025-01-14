@@ -28,3 +28,6 @@ phases:
       - echo "Running the custom shell script..."
       # - chmod +x scripts/create_or_update_lambda_function.sh   # Ensure the script is executable
       # - ./scripts/create_or_update_lambda_function.sh     
+env:
+  exported-variables:
+    - IMAGE_TAG
