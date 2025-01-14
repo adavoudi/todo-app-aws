@@ -53,7 +53,6 @@ Resources:
         S3Logs:
           Status: DISABLED
 
-
   CodePipeline:
     Type: AWS::CodePipeline::Pipeline
     Properties:
