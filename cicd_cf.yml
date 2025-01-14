@@ -22,6 +22,30 @@ Resources:
     Type: AWS::S3::Bucket
     Properties:
       BucketName: !Sub '${ProjectName}-artifacts-${AWS::AccountId}'
+
+  ContainerImageRepository:
+    Type: AWS::ECR::Repository
+    Properties:
+      RepositoryName: !Sub '${ProjectName}-container-image-repository'
+      EmptyOnDelete: true
+      LifecyclePolicy:
+        LifecyclePolicyText: |
+          {
+            "rules": [
+              {
+                "rulePriority": 1,
+                "description": "keep only the latest image",
+                "selection": {
+                  "tagStatus": "any",
+                  "countType": "imageCountMoreThan",
+                  "countNumber": 1
+                },
+                "action": {
+                  "type": "expire"
+                }
+              }
+            ]
+          }
   
   CodeBuildProject:
     Type: AWS::CodeBuild::Project
@@ -44,6 +68,10 @@ Resources:
             Value: !Ref 'AWS::Region'
           - Name: ACCOUNT_ID
             Value: !Ref 'AWS::AccountId'
+          - Name: IMAGE_NAME
+            Value: !Sub '${ProjectName}-container-image'
+          - Name: ECR_REPOSITORY_URI
+            Value: !GetAtt ContainerImageRepository.RepositoryUri
       TimeoutInMinutes: 10
       LogsConfig:
         CloudWatchLogs:

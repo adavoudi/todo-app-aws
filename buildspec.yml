@@ -15,14 +15,14 @@ phases:
     commands:
       - echo Build started for commit $IMAGE_TAG
       - echo Building the Docker image...
-      # - docker build -t lambda-from-container-image:$IMAGE_TAG .
-      # - docker tag lambda-from-container-image:$IMAGE_TAG ${ACCOUNT_ID}.dkr.ecr.${REGION_ID}.amazonaws.com/lambda-from-container-image:$IMAGE_TAG
+      - docker build -t $IMAGE_NAME:$IMAGE_TAG .
+      - docker tag $IMAGE_NAME:$IMAGE_TAG $ECR_REPOSITORY_URI:$IMAGE_TAG
 
   post_build:
     commands:
       - echo Build completed for commit $IMAGE_TAG
       - echo Pushing the Docker image to ECR...
-      # - docker push ${ACCOUNT_ID}.dkr.ecr.${REGION_ID}.amazonaws.com/lambda-from-container-image:$IMAGE_TAG
+      - docker push $ECR_REPOSITORY_URI:$IMAGE_TAG
 
       # Check if the Lambda function exists to update or create it
       - echo "Running the custom shell script..."
