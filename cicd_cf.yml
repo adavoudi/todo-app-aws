@@ -63,13 +63,6 @@ Resources:
       RoleArn: !GetAtt CodePipelineRole.Arn
       ExecutionMode: SUPERSEDED
       PipelineType: V2
-      Triggers:
-        - ProviderType: CodeStarSourceConnection
-          GitConfiguration:
-            SourceActionName: SourceAction
-            Push:
-              - Branches:
-                  Includes: [ main ]
       Stages:
         - Name: Source
           Actions:
