@@ -77,22 +77,3 @@ Resources:
       ValidateRequestBody: true
       ValidateRequestParameters: true
       Name: 'RequestValidator'
-
-  TodoRequestModel:
-    Type: AWS::ApiGateway::Model
-    Properties:
-      RestApiId: !Ref ApiGateway
-      ContentType: application/json
-      Name: 'TodoRequestModel'
-      Schema: |
-        {
-          "$schema": "http://json-schema.org/draft-04/schema#",
-          "title": "TodoRequest",
-          "type": "object",
-          "properties": {
-            "id": {
-              "type": "string"
-            }
-          },
-          "required": ["id"]
-        }

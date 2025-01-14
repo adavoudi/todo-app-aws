@@ -1,0 +1,197 @@
+Parameters:
+  GithubConnectionArn:
+    Type: String
+    Description: The ARN of the GitHub connection
+    Default: arn:aws:codeconnections:us-east-1:515966494838:connection/d745c30d-62e6-43c3-8c21-03a5c9ebf010
+  ProjectName:
+    Type: String
+    Description: The name of the CodeBuild project
+    Default: todos
+  GithubUserName:
+    Type: String
+    Description: The GitHub username
+    Default: adavoudi
+  GitHubRepoName:
+    Type: String
+    Description: The GitHub repository name
+    Default: todo-app-serverless
+
+Resources:
+
+  ArtifactBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub '${ProjectName}-artifacts-${AWS::AccountId}'
+  
+  CodeBuildProject:
+    Type: AWS::CodeBuild::Project
+    Properties:
+      Name: !Sub '${ProjectName}-build'
+      Description: CodeBuild project for building the application
+      ServiceRole: !GetAtt CodeBuildRole.Arn
+      Artifacts:
+        Type: CODEPIPELINE
+      Source:
+        Type: CODEPIPELINE
+        BuildSpec: buildspec.yml
+      Environment:
+        Type: LINUX_CONTAINER
+        Image: aws/codebuild/amazonlinux-x86_64-standard:5.0
+        ComputeType: BUILD_GENERAL1_SMALL
+        ImagePullCredentialsType: CODEBUILD
+        EnvironmentVariables:
+          - Name: REGION_ID
+            Value: !Ref 'AWS::Region'
+          - Name: ACCOUNT_ID
+            Value: !Ref 'AWS::AccountId'
+      TimeoutInMinutes: 10
+      LogsConfig:
+        CloudWatchLogs:
+          Status: ENABLED
+          GroupName: !Sub '${ProjectName}-codebuild-logs'
+          StreamName: !Sub '${ProjectName}-codebuild-logs'
+        S3Logs:
+          Status: DISABLED
+
+
+  CodePipeline:
+    Type: AWS::CodePipeline::Pipeline
+    Properties:
+      ArtifactStore:
+        Type: S3
+        Location: !Ref ArtifactBucket
+      RoleArn: !GetAtt CodePipelineRole.Arn
+      ExecutionMode: SUPERSEDED
+      PipelineType: V2
+      Triggers:
+        - ProviderType: CodeStarSourceConnection
+          GitConfiguration:
+            SourceActionName: SourceAction
+            Push:
+              - Branches:
+                  Includes: [ main ]
+      Stages:
+        - Name: Source
+          Actions:
+            - RunOrder: 1
+              Name: SourceAction
+              ActionTypeId:
+                Owner: AWS
+                Category: Source
+                Version: 1
+                Provider: CodeStarSourceConnection
+              Configuration:
+                BranchName: main
+                ConnectionArn: !Ref GithubConnectionArn
+                DetectChanges: true
+                FullRepositoryId: !Sub '${GithubUserName}/${GitHubRepoName}'
+              OutputArtifacts:
+                - Name: SourceArtifact
+              Namespace: SourceVariables
+        - Name: BuildAndDeploy
+          Actions:
+            - Name: BuildAndDeployAction
+              RunOrder: 1
+              ActionTypeId:
+                Category: Build
+                Owner: AWS
+                Version: 1
+                Provider: CodeBuild
+              Configuration:
+                ProjectName: !Ref CodeBuildProject
+              InputArtifacts:
+                - Name: SourceArtifact
+              OutputArtifacts:
+                - Name: BuildArtifact
+              Namespace: BuildVariables
+
+  ############### IAM Roles ################
+
+  CodePipelineRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: codepipeline.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: CodePipelinePolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - s3:*
+                Resource: !Sub '${ArtifactBucket.Arn}/*'
+              - Effect: Allow
+                Action:
+                  - codebuild:*
+                Resource: '*'
+              - Effect: Allow
+                Action:
+                  - codepipeline:*
+                Resource: '*'
+              - Effect: Allow
+                Action:
+                  - iam:PassRole
+                Resource: '*'
+              # Allow CodePipeline to get the GitHub connection
+              - Effect: Allow
+                Action:
+                  - codestar-connections:*
+                Resource: !Ref GithubConnectionArn
+
+  CodeBuildRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: codebuild.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: CodeBuildPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:*
+                Resource: '*'
+              - Effect: Allow
+                Action:
+                  - s3:*
+                Resource: !Sub '${ArtifactBucket.Arn}/*'
+              - Effect: Allow
+                Action:
+                  - codebuild:*
+                Resource: '*'
+              - Effect: Allow
+                Action:
+                  - sts:*
+                Resource: '*'
+              - Effect: Allow
+                Action:
+                  - ecr:*
+                Resource: '*'
+              - Effect: Allow
+                Action:
+                  - lambda:*
+                Resource: '*'
+              - Effect: Allow
+                Action:
+                  - cloudformation:*
+                Resource: '*'
+              - Effect: Allow
+                Action:
+                  - iam:PassRole
+                Resource: '*'
+              - Effect: Allow
+                Action:
+                  - secretsmanager:GetSecretValue
+                Resource: '*'
