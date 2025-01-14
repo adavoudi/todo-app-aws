@@ -2,7 +2,7 @@ Parameters:
   GithubConnectionArn:
     Type: String
     Description: The ARN of the GitHub connection
-    Default: arn:aws:codeconnections:us-east-1:515966494838:connection/d745c30d-62e6-43c3-8c21-03a5c9ebf010
+    Default: arn:aws:codeconnections:us-east-1:515966494838:connection/c7ebad1f-459a-4d1f-8794-ffd5cbbf7b24
   ProjectName:
     Type: String
     Description: The name of the CodeBuild project
@@ -53,7 +53,7 @@ Resources:
         S3Logs:
           Status: DISABLED
 
-  
+
   CodePipeline:
     Type: AWS::CodePipeline::Pipeline
     Properties:
@@ -63,6 +63,13 @@ Resources:
       RoleArn: !GetAtt CodePipelineRole.Arn
       ExecutionMode: SUPERSEDED
       PipelineType: V2
+      Triggers:
+        - ProviderType: CodeStarSourceConnection
+          GitConfiguration:
+            SourceActionName: SourceAction
+            Push:
+              - Branches:
+                  Includes: [ main ]
       Stages:
         - Name: Source
           Actions:
