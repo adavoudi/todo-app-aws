@@ -1,24 +1,19 @@
 Parameters:
-  GithubConnectionArn:
-    Type: String
-    Description: The ARN of the GitHub connection
-    Default: arn:aws:codeconnections:us-east-1:515966494838:connection/c7ebad1f-459a-4d1f-8794-ffd5cbbf7b24
   ProjectName:
     Type: String
     Description: The name of the CodeBuild project
     Default: todos
-  GithubUserName:
-    Type: String
-    Description: The GitHub username
-    Default: adavoudi
-  GitHubRepoName:
-    Type: String
-    Description: The GitHub repository name
-    Default: todo-app-serverless
   IsServerless:
     Type: String
     Description: Whether the application is serverless or not
     Default: "true"
+  ImageTag:
+    Type: String
+    Description: The tag for the Docker image
+    Default: latest
+  ContainerImageRepositoryUri:
+    Type: String
+    Description: The URI of the ECR repository
 
 Resources:
 

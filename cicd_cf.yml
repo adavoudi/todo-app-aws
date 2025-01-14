@@ -149,7 +149,7 @@ Resources:
                 ActionMode: CREATE_UPDATE
                 StackName: !Sub '${ProjectName}-stack'
                 Capabilities: CAPABILITY_NAMED_IAM
-                RoleArn: !GetAtt CodePipelineRole.Arn
+                RoleArn: !GetAtt InfrastructureCloudFormationRole.Arn
                 TemplatePath: SourceArtifact::infra.yml
                 ParameterOverrides: !Sub |
                   {
@@ -199,6 +199,10 @@ Resources:
                 Action:
                   - codestar-connections:*
                 Resource: !Ref GithubConnectionArn
+              - Effect: Allow
+                Action:
+                  - cloudformation:*
+                Resource: '*'
 
   CodeBuildRole:
     Type: AWS::IAM::Role
@@ -250,4 +254,64 @@ Resources:
               - Effect: Allow
                 Action:
                   - secretsmanager:GetSecretValue
+                Resource: '*'
+  
+  InfrastructureCloudFormationRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: cloudformation.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: InfrastructureCloudFormationPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - s3:*
+                Resource: !Sub '${ArtifactBucket.Arn}/*'
+              - Effect: Allow
+                Action:
+                  - cloudformation:*
+                Resource: '*'
+              - Effect: Allow
+                Action:
+                  - iam:PassRole
+                Resource: '*'
+              - Effect: Allow
+                Action:
+                  - ecr:*
+                Resource: '*'
+              - Effect: Allow
+                Action:
+                  - lambda:*
+                Resource: '*'
+              - Effect: Allow
+                Action:
+                  - secretsmanager:GetSecretValue
+                Resource: '*'
+              - Effect: Allow
+                Action:
+                  - ssm:GetParameter
+                Resource: '*'
+              - Effect: Allow
+                Action:
+                  - kms:Decrypt
+                Resource: '*'
+              - Effect: Allow
+                Action:
+                  - logs:*
+                Resource: '*'
+              - Effect: Allow
+                Action:
+                  - ec2:*
+                Resource: '*'
+              - Effect: Allow
+                Action:
+                  - cloudwatch:*
                 Resource: '*'
