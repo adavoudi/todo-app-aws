@@ -7,6 +7,9 @@ Parameters:
     Type: String
     Description: Whether the application is serverless or not
     Default: "true"
+    AllowedValues:
+      - "true"
+      - "false"
   ImageTag:
     Type: String
     Description: The tag for the Docker image
@@ -19,3 +22,10 @@ Resources:
 
   MyS3Bucket:
     Type: AWS::S3::Bucket
+
+
+Outputs:
+  S3BucketName:
+    Value: !Ref MyS3Bucket
+    Export:
+      Name: !Sub '${ProjectName}-s3-bucket-name-${AWS::Region}'

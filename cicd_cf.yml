@@ -19,6 +19,9 @@ Parameters:
     Type: String
     Description: Whether the application is serverless or not
     Default: "true"
+    AllowedValues:
+      - "true"
+      - "false"
 
 Resources:
 
@@ -120,9 +123,9 @@ Resources:
               OutputArtifacts:
                 - Name: SourceArtifact
               Namespace: SourceVariables
-        - Name: Build
+        - Name: DockerBuild
           Actions:
-            - Name: BuildAction
+            - Name: DockerBuildAction
               RunOrder: 1
               ActionTypeId:
                 Category: Build
@@ -134,8 +137,8 @@ Resources:
               InputArtifacts:
                 - Name: SourceArtifact
               OutputArtifacts:
-                - Name: BuildArtifact
-              Namespace: BuildVariables
+                - Name: DockerBuildArtifact
+              Namespace: DockerBuildVariables
         - Name: Deploy
           Actions:
             - Name: DeployAction
@@ -146,7 +149,7 @@ Resources:
                 Version: 1
                 Provider: CloudFormation
               Configuration:
-                ActionMode: CREATE_UPDATE
+                ActionMode: REPLACE_ON_FAILURE
                 StackName: !Sub '${ProjectName}-stack'
                 Capabilities: CAPABILITY_NAMED_IAM
                 RoleArn: !GetAtt InfrastructureCloudFormationRole.Arn
@@ -155,7 +158,7 @@ Resources:
                   {
                     "ContainerImageRepositoryUri": "${ContainerImageRepository.RepositoryUri}",
                     "ProjectName": "${ProjectName}",
-                    "ImageTag": "#{BuildVariables.IMAGE_TAG}",
+                    "ImageTag": "#{DockerBuildVariables.IMAGE_TAG}",
                     "IsServerless": "${IsServerless}"
                   }
               InputArtifacts:
@@ -274,7 +277,7 @@ Resources:
               - Effect: Allow
                 Action:
                   - s3:*
-                Resource: !Sub '${ArtifactBucket.Arn}/*'
+                Resource: '*'
               - Effect: Allow
                 Action:
                   - cloudformation:*
