@@ -3,7 +3,7 @@ import { createRoot } from 'react-dom/client';
 import { AuthProvider } from 'react-oidc-context'; // Import AuthProvider
 import './index.css';
 import App from './App.tsx';
-import { CLIENT_ID, USER_POOL_ID, REGION, REDIRECT_URI } from "./Constants"
+import { CLIENT_ID, USER_POOL_ID, REGION, REDIRECT_URI } from "./Constants.tsx"
 
 // Cognito OIDC configuration
 const cognitoAuthConfig = {
