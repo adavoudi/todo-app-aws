@@ -11,13 +11,19 @@ interface Todo {
 interface TodoListProps {
   todos: Todo[];
   deleteTodo: (id: string) => void;
+  toggleComplete: (id: string) => void;
 }
 
-const TodoList: React.FC<TodoListProps> = ({ todos, deleteTodo }) => {
+const TodoList: React.FC<TodoListProps> = ({ todos, deleteTodo, toggleComplete }) => {
   return (
     <ul className="space-y-4">
       {todos.map((todo) => (
-        <TodoItem key={todo.id} todo={todo} deleteTodo={deleteTodo} />
+        <TodoItem
+          key={todo.id}
+          todo={todo}
+          deleteTodo={deleteTodo}
+          toggleComplete={toggleComplete}
+        />
       ))}
     </ul>
   );

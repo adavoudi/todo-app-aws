@@ -1,4 +1,3 @@
-
 import React from "react";
 
 interface TodoItemProps {
@@ -9,6 +8,7 @@ interface TodoItemProps {
     completedAt: string | null;
   };
   deleteTodo: (id: string) => void;
+  toggleComplete: (id: string) => void;
 }
 
 const formatDate = (dateString: string | null) => {
@@ -20,8 +20,8 @@ const formatDate = (dateString: string | null) => {
   });
 };
 
-const TodoItem: React.FC<TodoItemProps> = ({ todo, deleteTodo }) => {
-  const { title, createdAt, completedAt } = todo;
+const TodoItem: React.FC<TodoItemProps> = ({ todo, deleteTodo, toggleComplete }) => {
+  const { id, title, createdAt, completedAt } = todo;
 
   return (
     <li
@@ -48,13 +48,21 @@ const TodoItem: React.FC<TodoItemProps> = ({ todo, deleteTodo }) => {
         </p>
       </div>
 
-      {/* Delete Button */}
-      <button
-        onClick={() => deleteTodo(todo.id)}
-        className="mt-3 sm:mt-0 sm:ml-4 px-4 py-2 bg-red-500 text-white text-sm font-medium rounded-lg hover:bg-red-600"
-      >
-        Delete
-      </button>
+      {/* Complete Checkbox and Delete Button */}
+      <div className="flex items-center mt-3 sm:mt-0 sm:ml-4">
+        <input
+          type="checkbox"
+          checked={!!completedAt}
+          onChange={() => toggleComplete(id)}
+          className="w-5 h-5 mr-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+        />
+        <button
+          onClick={() => deleteTodo(id)}
+          className="px-4 py-2 bg-red-500 text-white text-sm font-medium rounded-lg hover:bg-red-600"
+        >
+          Delete
+        </button>
+      </div>
     </li>
   );
 };

@@ -3,7 +3,7 @@ import { useAuth } from "react-oidc-context";
 import TopMenuBar from "./components/TopMenuBar";
 import TodoForm from "./components/TodoForm";
 import TodoList from "./components/TodoList";
-import { API_ENDPOINT } from "./Constants"
+import { API_ENDPOINT } from "./Constants";
 
 interface Todo {
   id: string;
@@ -17,17 +17,32 @@ const App: React.FC = () => {
   const [newTodo, setNewTodo] = useState<string>("");
   const auth = useAuth();
 
-  useEffect(() => {
-    if (auth.isAuthenticated && auth.user?.access_token) {
-      callApi(auth.user.access_token);
-    }
-  }, [auth.isAuthenticated, auth.user?.access_token]);
+  // Function to clear authorization-related URL parameters
+  const clearAuthorizationParams = () => {
+    const url = new URL(window.location.href);
+    const params = new URLSearchParams(url.search);
 
-  const callApi = async (accessToken: string) => {
+    // List of parameters to remove
+    const paramsToRemove = ["code", "state", "session_state", "id_token", "access_token"];
+
+    paramsToRemove.forEach(param => params.delete(param));
+
+    // Update the URL without reloading the page
+    window.history.replaceState({}, document.title, url.pathname);
+  };
+
+  useEffect(() => {
+    if (auth.isAuthenticated && auth.user?.id_token) {
+      callApi(auth.user.id_token);
+      clearAuthorizationParams(); // Clear authorization params after authentication
+    }
+  }, [auth.isAuthenticated, auth.user?.id_token]);
+
+  const callApi = async (idToken: string) => {
     try {
       const response = await fetch(API_ENDPOINT, {
         method: "GET",
-        headers: { Authorization: `Bearer ${accessToken}` },
+        headers: { Authorization: `Bearer ${idToken}` },
       });
 
       if (!response.ok) {
@@ -49,14 +64,14 @@ const App: React.FC = () => {
   const addTodo = async () => {
     if (!newTodo.trim()) return;
 
-    const accessToken = auth.user?.access_token;
+    const idToken = auth.user?.id_token;
 
     try {
       const response = await fetch(API_ENDPOINT, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${accessToken}`,
+          Authorization: `Bearer ${idToken}`,
         },
         body: JSON.stringify({ title: newTodo }),
       });
@@ -74,13 +89,13 @@ const App: React.FC = () => {
   };
 
   const deleteTodo = async (id: string) => {
-    const accessToken = auth.user?.access_token;
+    const idToken = auth.user?.id_token;
 
     try {
       const response = await fetch(`${API_ENDPOINT}/${id}`, {
         method: "DELETE",
         headers: {
-          Authorization: `Bearer ${accessToken}`,
+          Authorization: `Bearer ${idToken}`,
         },
       });
 
@@ -91,6 +106,28 @@ const App: React.FC = () => {
       setTodos(todos.filter((todo) => todo.id !== id));
     } catch (error) {
       console.error("Delete todo error:", error);
+    }
+  };
+
+  const toggleComplete = async (id: string) => {
+    const idToken = auth.user?.id_token;
+
+    try {
+      const response = await fetch(`${API_ENDPOINT}/${id}/toggle`, {
+        method: "PUT",
+        headers: {
+          Authorization: `Bearer ${idToken}`,
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to toggle todo completion");
+      }
+
+      const updatedTodo: Todo = await response.json();
+      setTodos(todos.map((todo) => (todo.id === id ? updatedTodo : todo)));
+    } catch (error) {
+      console.error("Toggle complete error:", error);
     }
   };
 
@@ -106,12 +143,12 @@ const App: React.FC = () => {
       {/* Main Content */}
       <div className="max-w-lg mx-auto mt-10 p-6 bg-white shadow-md rounded-lg">
         <header className="mb-6">
-          <h1 className="text-2xl font-bold text-gray-800 text-center">My Modern Todo App</h1>
+          <h1 className="text-2xl font-bold text-gray-800 text-center">My Todo App</h1>
         </header>
         {auth.isAuthenticated ? (
           <>
             <TodoForm newTodo={newTodo} setNewTodo={setNewTodo} addTodo={addTodo} />
-            <TodoList todos={todos} deleteTodo={deleteTodo} />
+            <TodoList todos={todos} deleteTodo={deleteTodo} toggleComplete={toggleComplete} />
           </>
         ) : (
           <div className="text-center text-gray-600">
