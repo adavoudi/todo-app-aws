@@ -54,17 +54,17 @@ Resources:
             ]
           }
   
-  CodeBuildProject:
+  BackendBuildProject:
     Type: AWS::CodeBuild::Project
     Properties:
-      Name: !Sub '${ProjectName}-build'
-      Description: CodeBuild project for building the application
+      Name: !Sub '${ProjectName}-BackendBuild'
+      Description: CodeBuild project for building the backend application
       ServiceRole: !GetAtt CodeBuildRole.Arn
       Artifacts:
         Type: CODEPIPELINE
       Source:
         Type: CODEPIPELINE
-        BuildSpec: buildspec.yml
+        BuildSpec: buildspec-backend.yml
       Environment:
         Type: LINUX_CONTAINER
         Image: aws/codebuild/amazonlinux-x86_64-standard:5.0
@@ -87,7 +87,6 @@ Resources:
           StreamName: !Sub '${ProjectName}-codebuild-logs'
         S3Logs:
           Status: DISABLED
-
 
   CodePipeline:
     Type: AWS::CodePipeline::Pipeline
@@ -133,7 +132,7 @@ Resources:
                 Version: 1
                 Provider: CodeBuild
               Configuration:
-                ProjectName: !Ref CodeBuildProject
+                ProjectName: !Ref BackendBuildProject
               InputArtifacts:
                 - Name: SourceArtifact
               OutputArtifacts:
