@@ -231,7 +231,7 @@ Outputs:
     Export:
       Name: 'S3BucketFrontend'
   RedirectURI:
-    Value: !GetAtt CloudfrontDistribution.DomainName
+    Value: !Sub 'https://${CloudfrontDistribution.DomainName}'
     Export:
       Name: 'RedirectURI'
   UserPoolID:
