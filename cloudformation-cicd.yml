@@ -360,6 +360,26 @@ Resources:
                 Resource: '*'
               - Effect: Allow
                 Action:
+                  - cloudfront:*
+                Resource: '*'
+              - Effect: Allow
+                Action:
+                  - apigateway:*
+                Resource: '*'
+              - Effect: Allow
+                Action:
+                  - dynamodb:*
+                Resource: '*'
+              - Effect: Allow
+                Action:
+                  - cognito-identity:*
+                Resource: '*'
+              - Effect: Allow
+                Action:
+                  - cognito-sync:*
+                Resource: '*'
+              - Effect: Allow
+                Action:
                   - iam:PassRole
                 Resource: '*'
               - Effect: Allow
