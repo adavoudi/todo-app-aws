@@ -16,7 +16,7 @@ load_dotenv()
 
 # Environment variables
 DYNAMODB_TABLE = os.getenv('DYNAMODB_TABLE', 'Tasks')
-AWS_REGION = os.getenv('AWS_REGION', 'us-west-2')
+AWS_REGION = os.getenv('REGION', 'us-west-2')
 DYNAMODB_ENDPOINT = os.getenv('DYNAMODB_ENDPOINT')  # Optional, for LocalStack
 
 # Configure boto3 based on the endpoint

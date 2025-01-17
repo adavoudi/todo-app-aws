@@ -88,39 +88,39 @@ Resources:
         S3Logs:
           Status: DISABLED
   
-  FrontendBuildProject:
-    Type: AWS::CodeBuild::Project
-    Properties:
-      Name: !Sub '${ProjectName}-FrontendBuild'
-      Description: CodeBuild project for building the frontend application
-      ServiceRole: !GetAtt CodeBuildRole.Arn
-      Artifacts:
-        Type: CODEPIPELINE
-      Source:
-        Type: CODEPIPELINE
-        BuildSpec: buildspec-frontend.yml
-      Environment:
-        Type: LINUX_CONTAINER
-        Image: aws/codebuild/amazonlinux-x86_64-standard:5.0
-        ComputeType: BUILD_GENERAL1_SMALL
-        ImagePullCredentialsType: CODEBUILD
-        EnvironmentVariables:
-          - Name: REGION_ID
-            Value: !Ref 'AWS::Region'
-          - Name: USER_POOL_DOMAIN
-            Value: !Ref 'AWS::AccountId'
-          - Name: IMAGE_NAME
-            Value: !Sub '${ProjectName}-container-image'
-          - Name: ECR_REPOSITORY_URI
-            Value: !GetAtt ContainerImageRepository.RepositoryUri
-      TimeoutInMinutes: 10
-      LogsConfig:
-        CloudWatchLogs:
-          Status: ENABLED
-          GroupName: !Sub '${ProjectName}-frontendbuild-logs'
-          StreamName: !Sub '${ProjectName}-frontendbuild-logs'
-        S3Logs:
-          Status: DISABLED
+  # FrontendBuildProject:
+  #   Type: AWS::CodeBuild::Project
+  #   Properties:
+  #     Name: !Sub '${ProjectName}-FrontendBuild'
+  #     Description: CodeBuild project for building the frontend application
+  #     ServiceRole: !GetAtt CodeBuildRole.Arn
+  #     Artifacts:
+  #       Type: CODEPIPELINE
+  #     Source:
+  #       Type: CODEPIPELINE
+  #       BuildSpec: buildspec-frontend.yml
+  #     Environment:
+  #       Type: LINUX_CONTAINER
+  #       Image: aws/codebuild/amazonlinux-x86_64-standard:5.0
+  #       ComputeType: BUILD_GENERAL1_SMALL
+  #       ImagePullCredentialsType: CODEBUILD
+  #       EnvironmentVariables:
+  #         - Name: REGION_ID
+  #           Value: !Ref 'AWS::Region'
+  #         - Name: USER_POOL_DOMAIN
+  #           Value: !Ref 'AWS::AccountId'
+  #         - Name: IMAGE_NAME
+  #           Value: !Sub '${ProjectName}-container-image'
+  #         - Name: ECR_REPOSITORY_URI
+  #           Value: !GetAtt ContainerImageRepository.RepositoryUri
+  #     TimeoutInMinutes: 10
+  #     LogsConfig:
+  #       CloudWatchLogs:
+  #         Status: ENABLED
+  #         GroupName: !Sub '${ProjectName}-frontendbuild-logs'
+  #         StreamName: !Sub '${ProjectName}-frontendbuild-logs'
+  #       S3Logs:
+  #         Status: DISABLED
 
   CodePipeline:
     Type: AWS::CodePipeline::Pipeline
@@ -172,83 +172,83 @@ Resources:
               OutputArtifacts:
                 - Name: BackendBuildArtifact
               Namespace: BackendBuildVariables
-        - Name: DeployInfrastructure
-          Actions:
-            - Name: DeployInfrastructureAction
-              RunOrder: 1
-              ActionTypeId:
-                Category: Deploy
-                Owner: AWS
-                Version: 1
-                Provider: CloudFormation
-              Configuration:
-                ActionMode: REPLACE_ON_FAILURE
-                StackName: !Sub '${ProjectName}-application-stack'
-                Capabilities: CAPABILITY_NAMED_IAM
-                RoleArn: !GetAtt InfrastructureCloudFormationRole.Arn
-                TemplatePath: SourceArtifact::cloudformation-application.yml
-                ParameterOverrides: !Sub |
-                  {
-                    "ContainerImageRepositoryUri": "${ContainerImageRepository.RepositoryUri}",
-                    "ProjectName": "${ProjectName}",
-                    "ImageTag": "#{BackendBuildVariables.IMAGE_TAG}",
-                    "IsServerless": "${IsServerless}"
-                  }
-              InputArtifacts:
-                - Name: SourceArtifact
-              Namespace: DeployVariables
-        - Name: BuildFrontend
-          Actions:
-            - Name: BuildFrontendAction
-              ActionTypeId:
-                Category: Build
-                Owner: AWS
-                Provider: CodeBuild
-                Version: '1'
-              Configuration:
-                ProjectName: !Ref FrontendBuildProject
-                EnvironmentVariables: !Sub |
-                  [
-                    {
-                      "name": "API_ENDPOINT",
-                      "value": "#{DeployVariables.API_ENDPOINT}",
-                      "type": "PLAINTEXT"
-                    },
-                    {
-                      "name": "USER_POOL_ID",
-                      "value": "#{DeployVariables.USER_POOL_ID}",
-                      "type": "PLAINTEXT"
-                    },
-                    {
-                      "name": "USER_POOL_DOMAIN",
-                      "value": "#{DeployVariables.USER_POOL_DOMAIN}",
-                      "type": "PLAINTEXT"
-                    },
-                    {
-                      "name": "CLIENT_ID",
-                      "value": "#{DeployVariables.CLIENT_ID}",
-                      "type": "PLAINTEXT"
-                    },
-                    {
-                      "name": "REDIRECT_URI",
-                      "value": "#{DeployVariables.REDIRECT_URI}",
-                      "type": "PLAINTEXT"
-                    },
-                    {
-                      "name": "REGION_ID",
-                      "value": "${AWS::Region}",
-                      "type": "PLAINTEXT"
-                    },
-                    {
-                      "name": "S3_BUCKET_NAME",
-                      "value": "#{DeployVariables.S3_BUCKET_FRONTEND}",
-                      "type": "PLAINTEXT"
-                    }
-                  ]
-              InputArtifacts:
-                - Name: SourceArtifact
-              OutputArtifacts:
-                - Name: BuildFrontendOutput
+        # - Name: DeployInfrastructure
+        #   Actions:
+        #     - Name: DeployInfrastructureAction
+        #       RunOrder: 1
+        #       ActionTypeId:
+        #         Category: Deploy
+        #         Owner: AWS
+        #         Version: 1
+        #         Provider: CloudFormation
+        #       Configuration:
+        #         ActionMode: REPLACE_ON_FAILURE
+        #         StackName: !Sub '${ProjectName}-application-stack'
+        #         Capabilities: CAPABILITY_NAMED_IAM
+        #         RoleArn: !GetAtt InfrastructureCloudFormationRole.Arn
+        #         TemplatePath: SourceArtifact::cloudformation-application.yml
+        #         ParameterOverrides: !Sub |
+        #           {
+        #             "ContainerImageRepositoryUri": "${ContainerImageRepository.RepositoryUri}",
+        #             "ProjectName": "${ProjectName}",
+        #             "ImageTag": "#{BackendBuildVariables.IMAGE_TAG}",
+        #             "IsServerless": "${IsServerless}"
+        #           }
+        #       InputArtifacts:
+        #         - Name: SourceArtifact
+        #       Namespace: DeployVariables
+        # - Name: BuildFrontend
+        #   Actions:
+        #     - Name: BuildFrontendAction
+        #       ActionTypeId:
+        #         Category: Build
+        #         Owner: AWS
+        #         Provider: CodeBuild
+        #         Version: '1'
+        #       Configuration:
+        #         ProjectName: !Ref FrontendBuildProject
+        #         EnvironmentVariables: !Sub |
+        #           [
+        #             {
+        #               "name": "API_ENDPOINT",
+        #               "value": "#{DeployVariables.API_ENDPOINT}",
+        #               "type": "PLAINTEXT"
+        #             },
+        #             {
+        #               "name": "USER_POOL_ID",
+        #               "value": "#{DeployVariables.USER_POOL_ID}",
+        #               "type": "PLAINTEXT"
+        #             },
+        #             {
+        #               "name": "USER_POOL_DOMAIN",
+        #               "value": "#{DeployVariables.USER_POOL_DOMAIN}",
+        #               "type": "PLAINTEXT"
+        #             },
+        #             {
+        #               "name": "CLIENT_ID",
+        #               "value": "#{DeployVariables.CLIENT_ID}",
+        #               "type": "PLAINTEXT"
+        #             },
+        #             {
+        #               "name": "REDIRECT_URI",
+        #               "value": "#{DeployVariables.REDIRECT_URI}",
+        #               "type": "PLAINTEXT"
+        #             },
+        #             {
+        #               "name": "REGION_ID",
+        #               "value": "${AWS::Region}",
+        #               "type": "PLAINTEXT"
+        #             },
+        #             {
+        #               "name": "S3_BUCKET_NAME",
+        #               "value": "#{DeployVariables.S3_BUCKET_FRONTEND}",
+        #               "type": "PLAINTEXT"
+        #             }
+        #           ]
+        #       InputArtifacts:
+        #         - Name: SourceArtifact
+        #       OutputArtifacts:
+        #         - Name: BuildFrontendOutput
 
   ############### IAM Roles ################
 

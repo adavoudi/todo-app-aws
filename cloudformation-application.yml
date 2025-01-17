@@ -125,6 +125,63 @@ Resources:
       Domain: !Sub '${ProjectName}-domain'
       UserPoolId: !Ref UserPool
 
+  DynamoDBTable:
+    Type: AWS::DynamoDB::Table
+    DeletionPolicy: Delete
+    UpdateReplacePolicy: Delete
+    Properties:
+      TableName: !Sub '${ProjectName}-todos-${AWS::AccountId}'
+      AttributeDefinitions:
+        - AttributeName: email
+          AttributeType: S
+        - AttributeName: id
+          AttributeType: S
+      KeySchema:
+        - AttributeName: email
+          KeyType: HASH
+        - AttributeName: id
+          KeyType: RANGE
+      BillingMode: PAY_PER_REQUEST
+
+  LambdaFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      Role: !GetAtt LambdaExecutionRole.Arn
+      FunctionName: !Sub '${ProjectName}-lambda-${AWS::AccountId}'
+      PackageType: Image
+      Code:
+        ImageUri: !Sub '${ContainerImageRepositoryUri}:${ImageTag}'
+      Timeout: 30
+      MemorySize: 128
+      Environment:
+        Variables:
+          DYNAMODB_TABLE: !Ref DynamoDBTable
+          REGION: !Ref 'AWS::Region'
+
+  LambdaExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: LambdaExecutionPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:*
+                Resource: '*'
+              - Effect: Allow
+                Action:
+                  - dynamodb:*
+                Resource: !GetAtt DynamoDBTable.Arn
+
 
 Outputs:
   FrontendS3BucketArn:
@@ -135,4 +192,15 @@ Outputs:
     Value: !GetAtt CloudfrontDistribution.DomainName
     Export:
       Name: 'REDIRECT-URI'
-  
+  UserPoolId:
+    Value: !Ref UserPool
+    Export:
+      Name: 'USER-POOL-ID'
+  UserPoolDomain:
+    Value: !Ref UserPoolDomain
+    Export:
+      Name: 'USER-POOL-DOMAIN'
+  UserPoolClientId:
+    Value: !Ref UserPoolClient
+    Export:
+      Name: 'CLIENT-ID'
