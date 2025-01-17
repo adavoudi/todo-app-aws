@@ -175,7 +175,7 @@ Resources:
               Configuration:
                 ActionMode: REPLACE_ON_FAILURE
                 StackName: !Sub '${ProjectName}-application-stack'
-                Capabilities: CAPABILITY_NAMED_IAM
+                Capabilities: CAPABILITY_IAM
                 RoleArn: !GetAtt InfrastructureCloudFormationRole.Arn
                 TemplatePath: SourceArtifact::cloudformation-application.yml
                 ParameterOverrides: !Sub |
@@ -202,27 +202,27 @@ Resources:
                   [
                     {
                       "name": "API_ENDPOINT",
-                      "value": "#{DeployVariables.API-ENDPOINT}",
+                      "value": "#{DeployVariables.APIGatewayEndpoint}",
                       "type": "PLAINTEXT"
                     },
                     {
                       "name": "USER_POOL_ID",
-                      "value": "#{DeployVariables.USER-POOL-ID}",
+                      "value": "#{DeployVariables.UserPoolID}",
                       "type": "PLAINTEXT"
                     },
                     {
                       "name": "USER_POOL_DOMAIN",
-                      "value": "#{DeployVariables.USER-POOL-DOMAIN}",
+                      "value": "#{DeployVariables.UserPoolDomain}",
                       "type": "PLAINTEXT"
                     },
                     {
                       "name": "CLIENT_ID",
-                      "value": "#{DeployVariables.CLIENT-ID}",
+                      "value": "#{DeployVariables.ClientID}",
                       "type": "PLAINTEXT"
                     },
                     {
                       "name": "REDIRECT_URI",
-                      "value": "#{DeployVariables.REDIRECT-URI}",
+                      "value": "#{DeployVariables.RedirectURI}",
                       "type": "PLAINTEXT"
                     },
                     {
@@ -232,7 +232,7 @@ Resources:
                     },
                     {
                       "name": "S3_BUCKET_NAME",
-                      "value": "#{DeployVariables.S3-BUCKET-FRONTEND}",
+                      "value": "#{DeployVariables.S3BucketFrontend}",
                       "type": "PLAINTEXT"
                     }
                   ]
@@ -376,11 +376,15 @@ Resources:
                 Resource: '*'
               - Effect: Allow
                 Action:
+                  - cognito-idp:*
+                Resource: '*'
+              - Effect: Allow
+                Action:
                   - cognito-sync:*
                 Resource: '*'
               - Effect: Allow
                 Action:
-                  - iam:PassRole
+                  - iam:*
                 Resource: '*'
               - Effect: Allow
                 Action:

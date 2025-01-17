@@ -229,20 +229,24 @@ Outputs:
   FrontendS3BucketArn:
     Value: !Ref FrontendS3Bucket
     Export:
-      Name: 'S3-BUCKET-FRONTEND'
+      Name: 'S3BucketFrontend'
   CloudFrontDomainName:
     Value: !GetAtt CloudfrontDistribution.DomainName
     Export:
-      Name: 'REDIRECT-URI'
+      Name: 'RedirectURI'
   UserPoolId:
     Value: !Ref UserPool
     Export:
-      Name: 'USER-POOL-ID'
+      Name: 'UserPoolID'
   UserPoolDomain:
     Value: !Ref UserPoolDomain
     Export:
-      Name: 'USER-POOL-DOMAIN'
+      Name: 'UserPoolDomain'
   UserPoolClientId:
     Value: !Ref UserPoolClient
     Export:
-      Name: 'CLIENT-ID'
+      Name: 'ClientID'
+  APIGatewayEndpoint:
+    Value: !GetAtt APIGateway.ApiEndpoint
+    Export:
+      Name: 'APIGatewayEndpoint'
