@@ -226,15 +226,15 @@ Resources:
         AuthorizerId: !Ref APIGatewayAuthorizer
 
 Outputs:
-  FrontendS3BucketArn:
+  S3BucketFrontend:
     Value: !Ref FrontendS3Bucket
     Export:
       Name: 'S3BucketFrontend'
-  CloudFrontDomainName:
+  RedirectURI:
     Value: !GetAtt CloudfrontDistribution.DomainName
     Export:
       Name: 'RedirectURI'
-  UserPoolId:
+  UserPoolID:
     Value: !Ref UserPool
     Export:
       Name: 'UserPoolID'
@@ -242,7 +242,7 @@ Outputs:
     Value: !Ref UserPoolDomain
     Export:
       Name: 'UserPoolDomain'
-  UserPoolClientId:
+  ClientID:
     Value: !Ref UserPoolClient
     Export:
       Name: 'ClientID'
