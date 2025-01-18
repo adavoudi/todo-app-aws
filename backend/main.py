@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Depends, HTTPException, Header
+from fastapi import FastAPI, Depends, HTTPException, Header, Response
 from fastapi.middleware.cors import CORSMiddleware  # Import CORSMiddleware
 from pydantic import BaseModel
 from typing import List, Optional
@@ -124,3 +124,15 @@ def toggle_task(task_id: str, email: str = Depends(get_email_from_token)):
 
     updated_item = updated_response['Item']
     return Todo(**updated_item)
+
+@app.options("/")
+def options_root():
+    # This response is used to support CORS preflight requests
+    return Response(
+        status_code=204,
+        headers={
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Methods": "*",
+            "Access-Control-Allow-Headers": "*",
+        }
+    )
