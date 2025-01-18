@@ -225,6 +225,13 @@ Resources:
         AuthorizationType: JWT
         AuthorizerId: !Ref APIGatewayAuthorizer
 
+  APIGatewayOptionsRoute:
+    Type: AWS::ApiGatewayV2::Route
+    Properties:
+      ApiId: !Ref APIGateway
+      RouteKey: OPTIONS /{proxy+}
+      Target: !Sub 'integrations/${APIGateway}'
+
 
 Outputs:
   S3BucketFrontend:
