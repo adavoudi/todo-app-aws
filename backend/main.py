@@ -66,7 +66,7 @@ def get_email_from_token(authorization: str = Header(...)):
     except jwt.InvalidTokenError:
         raise HTTPException(status_code=401, detail="Invalid token")
 
-@app.get("/tasks", response_model=List[Todo])
+@app.get("/", response_model=List[Todo])
 def get_tasks(email: str = Depends(get_email_from_token)):
     response = table.query(
         KeyConditionExpression='email = :email',
@@ -74,7 +74,7 @@ def get_tasks(email: str = Depends(get_email_from_token)):
     )
     return response.get('Items', [])
 
-@app.post("/tasks", response_model=Todo)
+@app.post("/", response_model=Todo)
 def create_task(todo: TodoCreate, email: str = Depends(get_email_from_token)):
     # Generate a unique ID and current timestamp
     task_id = str(uuid4())
@@ -95,12 +95,12 @@ def create_task(todo: TodoCreate, email: str = Depends(get_email_from_token)):
     # Return the created task
     return Todo(**todo_dict)
 
-@app.delete("/tasks/{task_id}")
+@app.delete("/{task_id}")
 def delete_task(task_id: str, email: str = Depends(get_email_from_token)):
     table.delete_item(Key={'email': email, 'id': task_id})
     return {"message": "Task deleted"}
 
-@app.put("/tasks/{task_id}/toggle", response_model=Todo)
+@app.put("/{task_id}/toggle", response_model=Todo)
 def toggle_task(task_id: str, email: str = Depends(get_email_from_token)):
     # Fetch the task from DynamoDB
     response = table.get_item(Key={'email': email, 'id': task_id})

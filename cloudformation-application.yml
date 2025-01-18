@@ -210,7 +210,7 @@ Resources:
       ApiId: !Ref APIGateway
       AuthorizerType: JWT
       IdentitySource:
-        - '$request.querystring.access_token'
+        - '$request.header.Authorization'
       JwtConfiguration:
         Audience:
           - !Ref UserPoolClient
