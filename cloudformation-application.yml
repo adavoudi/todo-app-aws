@@ -224,6 +224,23 @@ Resources:
       Route: 
         AuthorizationType: JWT
         AuthorizerId: !Ref APIGatewayAuthorizer
+  
+  ApiGatewayOptionsRoute:
+    Type: AWS::ApiGatewayV2::Route
+    Properties:
+      ApiId: !Ref APIGateway
+      RouteKey: 'OPTIONS /{proxy+}'
+      AuthorizationType: NONE
+      Target: !Sub 'integrations/${ApiGatewayOptionsIntegration}'
+
+  ApiGatewayOptionsIntegration:
+    Type: AWS::ApiGatewayV2::Integration
+    Properties:
+      ApiId: !Ref APIGateway
+      IntegrationType: MOCK
+      IntegrationUri: !Ref "AWS::NoValue"
+      IntegrationMethod: OPTIONS
+      PayloadFormatVersion: "1.0"
 
 Outputs:
   S3BucketFrontend:
