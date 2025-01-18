@@ -136,3 +136,8 @@ def options_root():
             "Access-Control-Allow-Headers": "*",
         }
     )
+
+# Health check endpoint
+@app.get("/health")
+def health():
+    return {"status": "ok"}
