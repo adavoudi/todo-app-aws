@@ -17,6 +17,13 @@ Parameters:
   ContainerImageRepositoryUri:
     Type: String
     Description: The URI of the ECR repository
+  EC2ImageId:
+    Type: AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>
+    Default: /aws/service/ami-amazon-linux-latest/amzn2-ami-hvm-x86_64-gp2
+  InstanceType:
+    Type: String
+    Default: t2.micro
+    Description: The EC2 instance type for the ECS cluster.
 
 Conditions:
   IsServerless: !Equals [!Ref IsServerless, "true"]
@@ -232,17 +239,16 @@ Resources:
           - IsServerless
           - INTERNET
           - VPC_LINK 
-      IntegrationUri: !GetAtt LambdaFunction.Arn
-      # ConnectionId:
-      #   !If
-      #     - IsServerless
-      #     - ''
-      #     - !Ref HTTPVpcLink
-      # IntegrationUri: 
-      #   !If
-      #     - IsServerless
-      #     - !GetAtt LambdaFunction.Arn
-      #     - !Ref ApplicationListener
+      ConnectionId:
+        !If
+          - IsServerless
+          - ''
+          - !Ref HTTPVpcLink
+      IntegrationUri: 
+        !If
+          - IsServerless
+          - !GetAtt LambdaFunction.Arn
+          - !Ref ApplicationListener
       IntegrationMethod: ANY
       PayloadFormatVersion: '2.0'
       TimeoutInMillis: 29000
@@ -259,14 +265,6 @@ Resources:
           - !Ref UserPoolClient
         Issuer: !Sub 'https://cognito-idp.${AWS::Region}.amazonaws.com/${UserPool}'
       Name: !Sub '${ProjectName}-authorizer-${AWS::AccountId}'
-
-  # APIGatewayDefaultRouteOverrides:
-  #   Type: AWS::ApiGatewayV2::ApiGatewayManagedOverrides
-  #   Properties: 
-  #     ApiId: !Ref APIGateway
-  #     Route: 
-  #       AuthorizationType: JWT
-  #       AuthorizerId: !Ref APIGatewayAuthorizer
 
   APIGatewayRoute:
     Type: AWS::ApiGatewayV2::Route
@@ -300,58 +298,272 @@ Resources:
       ApiId: !Ref APIGateway
       StageName: $default
 
-  ################## API Gateway ##################
+  ################## Serverful #################
 
-  # APIGateway:
-  #   Type: AWS::ApiGatewayV2::Api
-  #   Properties:
-  #     Name: !Sub '${ProjectName}-api-${AWS::AccountId}'
-  #     ProtocolType: HTTP
-  #     CorsConfiguration:
-  #       AllowOrigins:
-  #         - !Sub 'https://${CloudfrontDistribution.DomainName}'
-  #       AllowMethods:
-  #         - '*'
-  #       AllowHeaders:
-  #         - '*'
-  #     Target: !GetAtt LambdaFunction.Arn
-      
-  # APIGatewayAuthorizer:
-  #   Type: AWS::ApiGatewayV2::Authorizer
-  #   Properties:
-  #     ApiId: !Ref APIGateway
-  #     AuthorizerType: JWT
-  #     IdentitySource:
-  #       - '$request.header.Authorization'
-  #     JwtConfiguration:
-  #       Audience:
-  #         - !Ref UserPoolClient
-  #       Issuer: !Sub 'https://cognito-idp.${AWS::Region}.amazonaws.com/${UserPool}'
-  #     Name: !Sub '${ProjectName}-authorizer-${AWS::AccountId}'
+  EC2Role:
+    Type: AWS::IAM::Role
+    Condition: IsServerful
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ec2.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: Access-to-ECR
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - ecr:*
+                Resource: '*'
+        - PolicyName: Access-to-DynamoDB
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - dynamodb:*
+                Resource: !GetAtt DynamoDBTable.Arn
 
-  # APIGatewayDefaultRouteOverrides:
-  #   Type: AWS::ApiGatewayV2::ApiGatewayManagedOverrides
-  #   Properties: 
-  #     ApiId: !Ref APIGateway
-  #     Route: 
-  #       AuthorizationType: JWT
-  #       AuthorizerId: !Ref APIGatewayAuthorizer
+  EC2InstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Condition: IsServerful
+    Properties:
+      Roles:
+        - !Ref EC2Role
+  
+  EC2LaunchTemplate:
+    Type: AWS::EC2::LaunchTemplate
+    Condition: IsServerful
+    Properties:
+      LaunchTemplateName: !Sub '${ProjectName}-launch-template'
+      LaunchTemplateData:
+        ImageId: !Ref EC2ImageId
+        InstanceType: !Ref InstanceType
+        SecurityGroupIds:
+          - !GetAtt EC2SecurityGroup.GroupId
+        IamInstanceProfile:
+          Arn: !GetAtt EC2InstanceProfile.Arn
+        UserData:
+          Fn::Base64: !Sub |
+            #!/bin/bash
+            
+            # Install docker
+            yum update -y
+            yum install -y docker
 
-  # APIGatewayIntegration:
-  #   Type: AWS::ApiGatewayV2::Integration
-  #   Properties:
-  #     ApiId: !Ref APIGateway
-  #     IntegrationType: AWS_PROXY
-  #     IntegrationUri: !GetAtt LambdaFunction.Arn
-  #     PayloadFormatVersion: '2.0'
+            # create the docker group and add the ec2-user to it
+            usermod -aG docker ec2-user
+            usermod -aG docker $USER
+            newgrp docker
 
-  # APIGatewayOptionsRoute:
-  #   Type: AWS::ApiGatewayV2::Route
-  #   Properties:
-  #     ApiId: !Ref APIGateway
-  #     RouteKey: OPTIONS /{proxy+}
-  #     Target: !Sub 'integrations/${APIGatewayIntegration}'
+            # Start docker
+            systemctl start docker
 
+            # login to ECR
+            aws ecr get-login-password --region ${AWS::Region} | docker login --username AWS --password-stdin ${ContainerImageRepositoryUri}
+
+            # Pull the image
+            docker pull ${ContainerImageRepositoryUri}:${ImageTag}
+
+            # Run the container
+            docker run -d -p 80:8000 ${ContainerImageRepositoryUri}:${ImageTag}
+
+  AutoScalingGroup:
+    Type: AWS::AutoScaling::AutoScalingGroup
+    Condition: IsServerful
+    Properties:
+      VPCZoneIdentifier:
+        - !Ref PrivateSubnet1
+        - !Ref PrivateSubnet2
+      LaunchTemplate:
+        LaunchTemplateId: !Ref EC2LaunchTemplate
+        Version: !GetAtt EC2LaunchTemplate.LatestVersionNumber
+      TargetGroupARNs:
+           - !Ref ApplicationTargetGroup
+      MinSize: 1
+      MaxSize: 3
+      DesiredCapacity: 2
+      Tags:
+        - Key: Name
+          Value: !Sub '${ProjectName}-ec2-instance'
+          PropagateAtLaunch: true
+
+  ApplicationLoadBalancer:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    Condition: IsServerful
+    Properties:
+      Name: !Sub '${ProjectName}-alb'
+      Subnets:
+        - !Ref PrivateSubnet1
+        - !Ref PrivateSubnet2
+      SecurityGroups:
+        - !GetAtt EC2SecurityGroup.GroupId
+      Scheme: internal
+      LoadBalancerAttributes:
+        - Key: idle_timeout.timeout_seconds
+          Value: '60'
+      Tags:
+        - Key: Name
+          Value: !Sub '${ProjectName}-alb'
+  
+  ApplicationTargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Condition: IsServerful
+    Properties:
+      Name: !Sub '${ProjectName}-target-group'
+      Port: 80
+      Protocol: HTTP
+      VpcId: !Ref VPC
+      TargetType: instance
+      HealthCheckPath: '/health'
+
+  ApplicationListener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Condition: IsServerful
+    Properties:
+      LoadBalancerArn: !Ref ApplicationLoadBalancer
+      Protocol: HTTP
+      Port: 80
+      DefaultActions:
+        - Type: forward
+          TargetGroupArn: !Ref ApplicationTargetGroup
+
+  ################# Networking #################
+  VPC:
+    Type: AWS::EC2::VPC
+    Condition: IsServerful
+    Properties:
+      CidrBlock: 10.10.0.0/16
+      EnableDnsHostnames: true
+      EnableDnsSupport: true
+
+  PrivateSubnet1:
+    Type: AWS::EC2::Subnet
+    Condition: IsServerful
+    Properties:
+      VpcId: !Ref VPC
+      CidrBlock: 10.10.0.0/24
+      AvailabilityZone: !Select [ 0, !GetAZs '' ]
+
+  PrivateSubnet2:
+    Type: AWS::EC2::Subnet
+    Condition: IsServerful
+    Properties:
+      VpcId: !Ref VPC
+      CidrBlock: 10.10.1.0/24
+      AvailabilityZone: !Select [ 1, !GetAZs '' ]
+  
+  PublicSubnet1:
+    Type: AWS::EC2::Subnet
+    Condition: IsServerful
+    Properties:
+      VpcId: !Ref VPC
+      CidrBlock: 10.10.3.0/24
+      AvailabilityZone: !Select [ 0, !GetAZs '' ]
+      MapPublicIpOnLaunch: true
+  
+  InternetGateway:
+    Type: AWS::EC2::InternetGateway
+    Condition: IsServerful
+  
+  AttachGateway:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Condition: IsServerful
+    Properties:
+      VpcId: !Ref VPC
+      InternetGatewayId: !Ref InternetGateway
+  
+  PublicRouteTable:
+    Type: AWS::EC2::RouteTable
+    Condition: IsServerful
+    Properties:
+      VpcId: !Ref VPC
+
+  PublicRoute:
+    Type: AWS::EC2::Route
+    Condition: IsServerful
+    DependsOn: AttachGateway
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref InternetGateway
+  
+  PublicSubnet1RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Condition: IsServerful
+    Properties:
+      SubnetId: !Ref PublicSubnet1
+      RouteTableId: !Ref PublicRouteTable
+
+  NatGateway1EIP:
+    Type: AWS::EC2::EIP
+    Condition: IsServerful
+    DependsOn: AttachGateway
+    Properties:
+      Domain: vpc
+
+  NatGateway:
+    Type: AWS::EC2::NatGateway
+    Condition: IsServerful
+    Properties:
+      AllocationId: !GetAtt NatGateway1EIP.AllocationId
+      SubnetId: !Ref PublicSubnet1
+
+  PrivateRouteTable:
+    Type: AWS::EC2::RouteTable
+    Condition: IsServerful
+    Properties:
+      VpcId: !Ref VPC
+  
+  PrivateRoute:
+    Type: AWS::EC2::Route
+    Condition: IsServerful
+    Properties:
+      RouteTableId: !Ref PrivateRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      NatGatewayId: !Ref NatGateway
+  
+  PrivateSubnet1RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Condition: IsServerful
+    Properties:
+      SubnetId: !Ref PrivateSubnet1
+      RouteTableId: !Ref PrivateRouteTable
+  
+  PrivateSubnet2RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Condition: IsServerful
+    Properties:
+      SubnetId: !Ref PrivateSubnet2
+      RouteTableId: !Ref PrivateRouteTable
+
+  HTTPVpcLink:
+    Type: AWS::ApiGatewayV2::VpcLink
+    Condition: IsServerful
+    Properties:
+      Name: !Sub '${ProjectName}-vpc-link'
+      SubnetIds:
+        - !Ref PrivateSubnet1
+        - !Ref PrivateSubnet2
+      SecurityGroupIds:
+        - !GetAtt EC2SecurityGroup.GroupId
+
+  EC2SecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Condition: IsServerful
+    Properties:
+      GroupDescription: Security group for EC2 instances
+      VpcId: !Ref VPC
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
 
 Outputs:
   S3BucketFrontend:
