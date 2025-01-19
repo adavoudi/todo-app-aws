@@ -153,7 +153,7 @@ Resources:
       BillingMode: PAY_PER_REQUEST
 
   ################## Serverless ##################
-  
+
   LambdaFunction:
     Type: AWS::Lambda::Function
     Condition: IsServerless
@@ -205,12 +205,10 @@ Resources:
       SourceArn: !Sub 'arn:${AWS::Partition}:execute-api:${AWS::Region}:${AWS::AccountId}:${APIGateway}/*'
 
 
-  ################## API Gateway ##################
-
   APIGateway:
     Type: AWS::ApiGatewayV2::Api
     Properties:
-      Name: !Sub '${ProjectName}-api-${AWS::AccountId}'
+      Name: !Sub '${ProjectName}-api'
       ProtocolType: HTTP
       CorsConfiguration:
         AllowOrigins:
@@ -219,8 +217,36 @@ Resources:
           - '*'
         AllowHeaders:
           - '*'
-      Target: !GetAtt LambdaFunction.Arn
-      
+
+  APIGatewayIntegration:
+    Type: AWS::ApiGatewayV2::Integration
+    Properties:
+      ApiId: !Ref APIGateway
+      IntegrationType:
+        !If
+          - IsServerless
+          - AWS_PROXY
+          - HTTP_PROXY
+      ConnectionType:
+        !If
+          - IsServerless
+          - INTERNET
+          - VPC_LINK 
+      IntegrationUri: !GetAtt LambdaFunction.Arn
+      # ConnectionId:
+      #   !If
+      #     - IsServerless
+      #     - ''
+      #     - !Ref HTTPVpcLink
+      # IntegrationUri: 
+      #   !If
+      #     - IsServerless
+      #     - !GetAtt LambdaFunction.Arn
+      #     - !Ref ApplicationListener
+      IntegrationMethod: ANY
+      PayloadFormatVersion: '2.0'
+      TimeoutInMillis: 29000
+
   APIGatewayAuthorizer:
     Type: AWS::ApiGatewayV2::Authorizer
     Properties:
@@ -234,21 +260,22 @@ Resources:
         Issuer: !Sub 'https://cognito-idp.${AWS::Region}.amazonaws.com/${UserPool}'
       Name: !Sub '${ProjectName}-authorizer-${AWS::AccountId}'
 
-  APIGatewayDefaultRouteOverrides:
-    Type: AWS::ApiGatewayV2::ApiGatewayManagedOverrides
-    Properties: 
-      ApiId: !Ref APIGateway
-      Route: 
-        AuthorizationType: JWT
-        AuthorizerId: !Ref APIGatewayAuthorizer
+  # APIGatewayDefaultRouteOverrides:
+  #   Type: AWS::ApiGatewayV2::ApiGatewayManagedOverrides
+  #   Properties: 
+  #     ApiId: !Ref APIGateway
+  #     Route: 
+  #       AuthorizationType: JWT
+  #       AuthorizerId: !Ref APIGatewayAuthorizer
 
-  APIGatewayIntegration:
-    Type: AWS::ApiGatewayV2::Integration
+  APIGatewayRoute:
+    Type: AWS::ApiGatewayV2::Route
     Properties:
       ApiId: !Ref APIGateway
-      IntegrationType: AWS_PROXY
-      IntegrationUri: !GetAtt LambdaFunction.Arn
-      PayloadFormatVersion: '2.0'
+      RouteKey: ANY /{proxy+}
+      Target: !Sub 'integrations/${APIGatewayIntegration}'
+      AuthorizationType: JWT
+      AuthorizerId: !Ref APIGatewayAuthorizer
 
   APIGatewayOptionsRoute:
     Type: AWS::ApiGatewayV2::Route
@@ -256,6 +283,74 @@ Resources:
       ApiId: !Ref APIGateway
       RouteKey: OPTIONS /{proxy+}
       Target: !Sub 'integrations/${APIGatewayIntegration}'
+  
+  APIGatewayProdStage:
+    Type: AWS::ApiGatewayV2::Stage
+    Properties:
+      ApiId: !Ref APIGateway
+      StageName: $default
+      AutoDeploy: true
+
+  APIGatewayDeployment:
+    Type: AWS::ApiGatewayV2::Deployment
+    DependsOn:
+      - APIGatewayProdStage
+      - APIGatewayRoute
+    Properties:
+      ApiId: !Ref APIGateway
+      StageName: $default
+
+  ################## API Gateway ##################
+
+  # APIGateway:
+  #   Type: AWS::ApiGatewayV2::Api
+  #   Properties:
+  #     Name: !Sub '${ProjectName}-api-${AWS::AccountId}'
+  #     ProtocolType: HTTP
+  #     CorsConfiguration:
+  #       AllowOrigins:
+  #         - !Sub 'https://${CloudfrontDistribution.DomainName}'
+  #       AllowMethods:
+  #         - '*'
+  #       AllowHeaders:
+  #         - '*'
+  #     Target: !GetAtt LambdaFunction.Arn
+      
+  # APIGatewayAuthorizer:
+  #   Type: AWS::ApiGatewayV2::Authorizer
+  #   Properties:
+  #     ApiId: !Ref APIGateway
+  #     AuthorizerType: JWT
+  #     IdentitySource:
+  #       - '$request.header.Authorization'
+  #     JwtConfiguration:
+  #       Audience:
+  #         - !Ref UserPoolClient
+  #       Issuer: !Sub 'https://cognito-idp.${AWS::Region}.amazonaws.com/${UserPool}'
+  #     Name: !Sub '${ProjectName}-authorizer-${AWS::AccountId}'
+
+  # APIGatewayDefaultRouteOverrides:
+  #   Type: AWS::ApiGatewayV2::ApiGatewayManagedOverrides
+  #   Properties: 
+  #     ApiId: !Ref APIGateway
+  #     Route: 
+  #       AuthorizationType: JWT
+  #       AuthorizerId: !Ref APIGatewayAuthorizer
+
+  # APIGatewayIntegration:
+  #   Type: AWS::ApiGatewayV2::Integration
+  #   Properties:
+  #     ApiId: !Ref APIGateway
+  #     IntegrationType: AWS_PROXY
+  #     IntegrationUri: !GetAtt LambdaFunction.Arn
+  #     PayloadFormatVersion: '2.0'
+
+  # APIGatewayOptionsRoute:
+  #   Type: AWS::ApiGatewayV2::Route
+  #   Properties:
+  #     ApiId: !Ref APIGateway
+  #     RouteKey: OPTIONS /{proxy+}
+  #     Target: !Sub 'integrations/${APIGatewayIntegration}'
 
 
 Outputs:
