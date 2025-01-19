@@ -18,7 +18,13 @@ Parameters:
     Type: String
     Description: The URI of the ECR repository
 
+Conditions:
+  IsServerless: !Equals [!Ref IsServerless, "true"]
+  IsServerful: !Equals [!Ref IsServerless, "false"]
+
 Resources:
+
+  ################## Frontend ##################
 
   FrontendS3Bucket:
     Type: AWS::S3::Bucket
@@ -69,6 +75,7 @@ Resources:
           CloudFrontDefaultCertificate: true
         PriceClass: PriceClass_100
 
+  ################## Cognito ##################
 
   UserPool:
     Type: AWS::Cognito::UserPool
@@ -125,6 +132,8 @@ Resources:
       Domain: !Sub '${ProjectName}-domain'
       UserPoolId: !Ref UserPool
 
+  ################## DynamoDB ##################
+
   DynamoDBTable:
     Type: AWS::DynamoDB::Table
     DeletionPolicy: Delete
@@ -143,8 +152,11 @@ Resources:
           KeyType: RANGE
       BillingMode: PAY_PER_REQUEST
 
+  ################## Serverless ##################
+  
   LambdaFunction:
     Type: AWS::Lambda::Function
+    Condition: IsServerless
     Properties:
       Role: !GetAtt LambdaExecutionRole.Arn
       FunctionName: !Sub '${ProjectName}-lambda-${AWS::AccountId}'
@@ -160,6 +172,7 @@ Resources:
 
   LambdaExecutionRole:
     Type: AWS::IAM::Role
+    Condition: IsServerless
     Properties:
       AssumeRolePolicyDocument:
         Version: '2012-10-17'
@@ -184,11 +197,15 @@ Resources:
   
   LamdbaFunctionInvokePermission:
     Type: AWS::Lambda::Permission
+    Condition: IsServerless
     Properties:
       Action: lambda:InvokeFunction
       FunctionName: !Ref LambdaFunction
       Principal: apigateway.amazonaws.com
       SourceArn: !Sub 'arn:${AWS::Partition}:execute-api:${AWS::Region}:${AWS::AccountId}:${APIGateway}/*'
+
+
+  ################## API Gateway ##################
 
   APIGateway:
     Type: AWS::ApiGatewayV2::Api
