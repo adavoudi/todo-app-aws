@@ -250,7 +250,7 @@ Resources:
           - !GetAtt LambdaFunction.Arn
           - !Ref ApplicationListener
       IntegrationMethod: ANY
-      PayloadFormatVersion: '2.0'
+      PayloadFormatVersion: '1.0'
       TimeoutInMillis: 29000
 
   APIGatewayAuthorizer:

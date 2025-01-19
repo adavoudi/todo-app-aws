@@ -418,3 +418,16 @@ Resources:
                 Action:
                   - cloudwatch:*
                 Resource: '*'
+              - Effect: Allow
+                Action:
+                  - ssm:*
+                Resource: '*'
+              - Effect: Allow
+                Action:
+                  - autoscaling:*
+                Resource: '*'
+              # application load balancer
+              - Effect: Allow
+                Action:
+                  - elasticloadbalancing:*
+                Resource: '*'
