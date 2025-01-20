@@ -14,7 +14,7 @@ Parameters:
   GitHubRepoName:
     Type: String
     Description: The GitHub repository name
-    Default: todo-app-serverless
+    Default: todo-app-aws
   IsServerless:
     Type: String
     Description: Whether the application is serverless or not
