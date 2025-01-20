@@ -371,7 +371,7 @@ Resources:
             docker pull ${ContainerImageRepositoryUri}:${ImageTag}
 
             # Run the container
-            docker run -d -e DYNAMODB_TABLE=${DynamoDBTable} -e REGION=${AWS::Region} -p 80:80 ${ContainerImageRepositoryUri}:${ImageTag}
+            docker run -d -e DYNAMODB_TABLE=${DynamoDBTable} -e REGION=${AWS::Region} -p 80:8000 ${ContainerImageRepositoryUri}:${ImageTag}
 
   AutoScalingGroup:
     Type: AWS::AutoScaling::AutoScalingGroup
